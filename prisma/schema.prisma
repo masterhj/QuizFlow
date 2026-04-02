@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+}
+
+enum QuestionType {
+  MCQ
+  SHORT_ANSWER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          UserRole  @default(STUDENT)
+  xp            Int       @default(0)
+  streak        Int       @default(0)
+  lastActiveAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  quizzes       Quiz[]
+  attempts      Attempt[]
+  masteries     TopicMastery[]
+  reviews       Review[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Quiz {
+  id                String   @id @default(cuid())
+  title             String
+  subject           String
+  description       String?
+  difficulty        Int      @default(3)
+  isPublished       Boolean  @default(false)
+  creatorId         String
+  tags              String[]
+  estimatedMinutes  Int      @default(10)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  creator           User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  questions         Question[]
+  attempts          Attempt[]
+
+  @@index([creatorId])
+  @@index([subject])
+  @@index([isPublished])
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  quizId        String
+  text          String
+  type          QuestionType
+  options       Json?
+  correctAnswer String
+  difficulty    Int      @default(3)
+  explanation   String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attemptAnswers AttemptAnswer[]
+  reviews       Review[]
+
+  @@index([quizId])
+}
+
+model Attempt {
+  id                String   @id @default(cuid())
+  userId            String
+  quizId            String
+  startedAt         DateTime @default(now())
+  completedAt       DateTime?
+  score             Float?
+  totalQuestions    Int
+  correctCount      Int      @default(0)
+  timeTakenSeconds  Int?
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz              Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers           AttemptAnswer[]
+
+  @@index([userId])
+  @@index([quizId])
+  @@index([completedAt])
+}
+
+model AttemptAnswer {
+  id               String   @id @default(cuid())
+  attemptId        String
+  questionId       String
+  userAnswer       String
+  isCorrect        Boolean
+  timeSpentSeconds Int      @default(0)
+
+  attempt          Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+model TopicMastery {
+  id              String   @id @default(cuid())
+  userId          String
+  subject         String
+  mastery         Float    @default(0)
+  easeFactor      Float    @default(2.5)
+  intervalDays    Int      @default(1)
+  nextReviewDate  DateTime @default(now())
+  lastReviewedAt  DateTime?
+  reviewCount     Int      @default(0)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subject])
+  @@index([userId])
+  @@index([nextReviewDate])
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  userId        String
+  questionId    String
+  scheduledAt   DateTime
+  completedAt   DateTime?
+  grade         Int?
+  easeFactor    Float    @default(2.5)
+  intervalDays  Int      @default(1)
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([scheduledAt])
+  @@index([completedAt])
+}
