@@ -7,7 +7,7 @@ import { PerformanceChart } from "@/components/dashboard/performance-chart";
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Flame, Plus, BarChart3, AlertCircle, BookOpen, Target, Zap, Star, Users, Calendar } from "lucide-react";
+import { CheckCircle2, Flame, Plus, BarChart3, AlertCircle } from "lucide-react";
 
 interface StudentDashboardData {
   recentAttempts: Array<{
@@ -368,25 +368,25 @@ export default async function DashboardPage() {
           <MetricCard
             title="Total Quizzes"
             value={data.totalQuizzes}
-            icon={BookOpen}
+            icon="book-open"
             color="indigo"
           />
           <MetricCard
             title="Average Score"
             value={`${data.avgScore}%`}
-            icon={Target}
+            icon="target"
             color="emerald"
           />
           <MetricCard
             title="Current Streak"
             value={data.currentStreak}
-            icon={Zap}
+            icon="zap"
             color="amber"
           />
           <MetricCard
             title="Total XP"
             value={data.totalXP}
-            icon={Star}
+            icon="star"
             color="indigo"
           />
         </div>
@@ -501,25 +501,25 @@ export default async function DashboardPage() {
         <MetricCard
           title="Total Quizzes"
           value={data.quizzes.length}
-          icon={BookOpen}
+          icon="book-open"
           color="indigo"
         />
         <MetricCard
           title="Total Students"
           value={data.totalStudents}
-          icon={Users}
+          icon="users"
           color="emerald"
         />
         <MetricCard
           title="Class Average"
           value={`${data.classAvgScore}%`}
-          icon={Target}
+          icon="target"
           color="amber"
         />
         <MetricCard
           title="This Month"
           value={data.quizzesThisMonth}
-          icon={Calendar}
+          icon="calendar"
           color="red"
         />
       </div>

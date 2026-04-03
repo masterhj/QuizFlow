@@ -199,95 +199,7 @@ quizflow/
 └── tailwind.config.ts             # Tailwind configuration
 ```
 
-## 🔌 API Routes
 
-| Method | Route | Description | Auth Required |
-|--------|-------|-------------|---|
-| POST | `/api/auth/register` | User registration | ❌ |
-| POST | `/api/auth/signin` | User login | ❌ |
-| GET | `/api/auth/session` | Get current session | ✅ |
-| PATCH | `/api/user/profile` | Update user profile | ✅ |
-| POST | `/api/quiz/create` | Create new quiz | ✅ |
-| GET | `/api/quiz/[id]` | Get quiz details | ✅ |
-| POST | `/api/quiz/submit` | Submit quiz attempt | ✅ |
-| GET | `/api/analytics` | Get user analytics | ✅ |
-| POST | `/api/review` | Get review cards | ✅ |
-| POST | `/api/ai/generate` | Generate content with AI | ✅ |
-
-## 🔐 Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/db` |
-| `NEXTAUTH_SECRET` | Secret for JWT signing | `your-secret-key` |
-| `NEXTAUTH_URL` | Application URL | `http://localhost:3000` |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | `xxx.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | `xxx` |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude | `sk-ant-xxx` |
-| `NEXT_PUBLIC_APP_URL` | Public app URL | `http://localhost:3000` |
-
-## 🗄️ Database Schema
-
-### Core Models
-- **User**: Student/teacher profiles with roles, XP, and settings
-- **Quiz**: Quiz metadata with topics and difficulty
-- **Question**: Individual questions with answers
-- **Option**: Multiple choice options
-- **Attempt**: Quiz attempt records with scores
-- **Review**: Spaced repetition schedule tracking
-- **Topic**: Subject categories with mastery levels
-- **Performance**: User performance metrics
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. Push code to GitHub
-2. Import project in [Vercel](https://vercel.com)
-3. Set environment variables
-4. Deploy automatically on push
-
-```bash
-# Or deploy via CLI
-npm i -g vercel
-vercel
-```
-
-### Self-Hosted
-
-1. Build application: `npm run build`
-2. Start production server: `npm start`
-3. Set up PostgreSQL database
-4. Configure reverse proxy (nginx/Apache)
-5. Use process manager (PM2/systemd)
-
-### Database Hosting
-
-- **Neon** (Recommended): PostgreSQL as a service
-- **Railway**: Full-stack hosting
-- **Supabase**: PostgreSQL + Auth
-- **AWS RDS**: Managed database service
-
-## 📊 Key Algorithms
-
-### SM-2 Spaced Repetition
-- Tracks ease factor and interval
-- Dynamically adjusts review schedule
-- Optimizes retention vs. time investment
-
-### Adaptive Difficulty
-- Tracks user performance per topic
-- Adjusts question difficulty accordingly
-- Personalizes learning experience
-
-## 🔒 Security
-
-- Passwords hashed with bcryptjs (12 rounds)
-- JWT-based authentication
-- Protected API routes with session validation
-- CSRF protection via NextAuth
-- Input validation with Zod schemas
-- SQL injection prevention via Prisma
 
 ## 🧪 Testing
 
@@ -336,27 +248,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Next.js documentation and community
 - Prisma for excellent ORM
-- Anthropic for Claude API
 - Tailwind CSS for utility framework
 - All open-source contributors
 
 ## 📞 Support
 
 For support, email support@quizflow.app or open an issue on GitHub.
-
-## 🗺️ Roadmap
-
-- [ ] Mobile app (React Native)
-- [ ] Real-time collaboration features
-- [ ] Advanced reporting and insights
-- [ ] Integration with LMS platforms
-- [ ] Offline quiz taking
-- [ ] Video explanations for answers
-- [ ] Peer-to-peer quiz sharing
-- [ ] Advanced analytics with ML predictions
-- [ ] Multi-language support
-- [ ] API for third-party integrations
-
----
-
-Built with ❤️ for learners and educators worldwide.

@@ -2,15 +2,24 @@
 
 import React from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
+import { BookOpen, Target, Zap, Star, Users, Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MetricCardProps {
   title: string;
   value: string | number;
   change?: number;
-  icon: LucideIcon;
+  icon: "book-open" | "target" | "zap" | "star" | "users" | "calendar";
   color: "indigo" | "emerald" | "amber" | "red";
+}
+
+const iconMap = {
+  "book-open": BookOpen,
+  target: Target,
+  zap: Zap,
+  star: Star,
+  users: Users,
+  calendar: Calendar,
 }
 
 const colorConfig = {
@@ -40,8 +49,9 @@ const AnimatedNumber = ({ value }: { value: number }) => {
 };
 
 export const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
-  ({ title, value, change, icon: Icon, color }, ref) => {
+  ({ title, value, change, icon: iconName, color }, ref) => {
     const config = colorConfig[color];
+    const Icon = iconMap[iconName];
     const isPositiveChange = change ? change >= 0 : false;
 
     return (
