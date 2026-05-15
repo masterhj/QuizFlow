@@ -1,5 +1,7 @@
 # QuizFlow
 
+**Live Project Demo:** [https://quiz-flow-six.vercel.app/](https://quiz-flow-six.vercel.app/)
+
 QuizFlow is an intelligent, interactive quiz platform built with Next.js. It leverages AI to generate engaging questions and provides actionable analytics to track user performance.
 
 ## Tech Stack
@@ -8,7 +10,7 @@ QuizFlow is an intelligent, interactive quiz platform built with Next.js. It lev
 - **Database ORM**: Prisma
 - **Authentication**: NextAuth.js
 - **Styling**: Tailwind CSS
-- **Features**: AI-powered question generation & interactive dashboard analytics
+- **Features**: Gemini AI-powered question generation & interactive dashboard analytics and Web3 wallet Involved
 
 ## Getting Started
 
