@@ -1,174 +1,224 @@
-import { useQuizStore } from '../store/quizStore';
-import { BrainCircuit, Flame, Sparkles, Settings, LogOut, ChevronRight, BookOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useQuizStore, type TabType } from '../store/quizStore';
+import { BrainCircuit, Settings, LogOut, LayoutGrid, Check, Flame } from 'lucide-react';
+import { cn } from '../utils/cn';
 
-type TabType = 'auth' | 'dashboard' | 'setup' | 'quiz' | 'results' | 'flashcards';
+/** Primary destinations. `matches` maps sub-routes onto their parent tab. */
+const TABS: { label: string; tab: TabType; matches: TabType[] }[] = [
+  { label: 'Overview', tab: 'dashboard', matches: ['dashboard'] },
+  { label: 'Study', tab: 'setup', matches: ['setup', 'quiz', 'results'] },
+  { label: 'Flashcards', tab: 'flashcards', matches: ['flashcards'] },
+  { label: 'Credentials', tab: 'credentials', matches: ['credentials'] },
+];
 
 export default function Navbar() {
-  const { 
-    user, 
-    logout, 
-    activeTab, 
-    navigateTo, 
-    currentSession, 
-    useGemini, 
-    toggleSettingsModal 
-  } = useQuizStore();
+  const { user, logout, activeTab, navigateTo, toggleSettingsModal } = useQuizStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const [showDropdown, setShowDropdown] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [menuOpen]);
 
   if (!user) return null;
 
-  // Breadcrumbs mapping
-  const getBreadcrumbs = () => {
-    const items: { label: string; tab: TabType }[] = [{ label: 'Dashboard', tab: 'dashboard' }];
-
-    if (activeTab === 'setup') {
-      items.push({ label: 'New Quiz Setup', tab: 'setup' });
-    } else if (activeTab === 'quiz' && currentSession) {
-      items.push({ label: `Quiz: ${currentSession.subject}`, tab: 'quiz' });
-    } else if (activeTab === 'results' && currentSession) {
-      items.push({ label: `${currentSession.subject} Results`, tab: 'results' });
-    } else if (activeTab === 'flashcards' && currentSession) {
-      items.push({ label: `${currentSession.subject} Flashcards`, tab: 'flashcards' });
-    }
-
-    return items;
-  };
-
-  const breadcrumbs = getBreadcrumbs();
+  const initials = user.displayName
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-slate-800/60 bg-[#0A0F1E]/80 backdrop-blur-md px-6 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
-        {/* Left side: Brand Logo & Dynamic Breadcrumbs */}
-        <div className="flex items-center gap-4">
-          <button 
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas/80 backdrop-blur-md">
+      <div className="mx-auto flex h-12 max-w-[1200px] items-center justify-between gap-6 px-6">
+        {/* Brand + primary tabs */}
+        <div className="flex min-w-0 items-center gap-6">
+          <button
             onClick={() => navigateTo('dashboard')}
-            className="flex items-center gap-2.5 group focus:outline-none"
+            className="flex shrink-0 items-center gap-2 text-[13px] font-semibold tracking-[-0.01em] text-fg"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-emerald-400 p-0.5 transition duration-300 group-hover:rotate-6">
-              <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-[#0A0F1E]">
-                <BrainCircuit className="h-5 w-5 text-blue-400" />
-              </div>
-            </div>
-            <span className="text-lg font-bold text-white group-hover:text-blue-400 transition">
-              Quiz<span className="text-blue-400">AI</span>
-            </span>
+            <BrainCircuit className="h-[18px] w-[18px] text-accent" />
+            QuizAI
           </button>
 
-          {/* Desktop Breadcrumbs */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 pl-4 border-l border-slate-800/80">
-            {breadcrumbs.map((crumb, idx) => (
-              <span key={crumb.label} className="flex items-center gap-1.5">
-                {idx > 0 && <ChevronRight className="h-3 w-3" />}
+          <nav className="hidden items-center gap-0.5 sm:flex">
+            {TABS.map(({ label, tab, matches }) => {
+              const active = matches.includes(activeTab);
+              return (
                 <button
-                  onClick={() => navigateTo(crumb.tab)}
-                  className={`hover:text-white transition font-medium font-mono uppercase tracking-wider ${
-                    idx === breadcrumbs.length - 1 ? 'text-slate-200' : 'text-slate-500'
-                  }`}
-                  disabled={idx === breadcrumbs.length - 1}
+                  key={label}
+                  onClick={() => navigateTo(tab)}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'relative rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors',
+                    active ? 'text-fg' : 'text-fg-muted hover:text-fg'
+                  )}
                 >
-                  {crumb.label}
+                  {label}
+                  {/* Underline slides in on the active tab */}
+                  <span
+                    className={cn(
+                      'absolute inset-x-1.5 -bottom-[11px] h-0.5 origin-left rounded-full bg-accent transition-transform duration-200',
+                      active ? 'scale-x-100' : 'scale-x-0'
+                    )}
+                  />
                 </button>
-              </span>
-            ))}
-          </div>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Right side: Streaks, Engine indicators & Profile */}
-        <div className="flex items-center gap-4">
-          
-          {/* Gamified Daily Study Streak */}
-          <div className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/5 px-3 py-1 shadow-sm select-none" title="Consecutive Study Streak">
-            <Flame className="h-4 w-4 text-amber-500 fill-amber-500 animate-pulse" />
-            <span className="text-xs font-bold text-amber-400 font-mono">{user.studyStreak}D Streak</span>
-          </div>
-
-          {/* Engine Badge Indicator */}
-          <div 
-            onClick={() => toggleSettingsModal(true)}
-            className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-pointer select-none transition ${
-              useGemini 
-                ? 'border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/15' 
-                : 'border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/15'
-            }`}
-            title="Click to change AI settings"
+        {/* Streak + account */}
+        <div className="flex items-center gap-3">
+          <span
+            className="hidden items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[12px] text-amber-300 md:inline-flex"
+            title="Consecutive days studied"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>{useGemini ? 'Option B: Gemini UI' : 'Option A: Simulator UI'}</span>
-          </div>
+            <Flame className="h-3 w-3" />
+            <span data-numeric className="font-medium">
+              {user.studyStreak}
+            </span>
+            day streak
+          </span>
 
-          {/* Profile Dropdown trigger */}
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-2 focus:outline-none rounded-full hover:ring-2 hover:ring-blue-500/50 p-0.5 transition"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-medium transition-all duration-150 hover:scale-105',
+                menuOpen
+                  ? 'border-accent bg-accent/15 text-accent-fg'
+                  : 'border-line bg-raised text-fg-muted hover:border-accent-line hover:text-fg'
+              )}
             >
-              <img
-                src={user.photoURL || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
-                alt={user.displayName}
-                className="h-8 w-8 rounded-full object-cover border border-slate-700 bg-[#111827]"
-              />
+              {initials || 'U'}
             </button>
 
-            {/* Dropdown menu */}
-            {showDropdown && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowDropdown(false)} 
-                />
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-800 bg-[#111827]/95 backdrop-blur-lg p-2 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="px-3 py-2.5 border-b border-slate-800/80 text-left">
-                    <p className="text-sm font-semibold text-white truncate">{user.displayName}</p>
-                    <p className="text-xs text-slate-400 truncate font-mono mt-0.5">{user.email}</p>
-                  </div>
-                  
-                  <div className="py-1 space-y-0.5">
-                    <button
-                      onClick={() => {
-                        navigateTo('dashboard');
-                        setShowDropdown(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white transition"
-                    >
-                      <BookOpen className="h-4 w-4 text-blue-400" />
-                      My Study Dashboard
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        toggleSettingsModal(true);
-                        setShowDropdown(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white transition"
-                    >
-                      <Settings className="h-4 w-4 text-purple-400" />
-                      AI Model Settings
-                    </button>
-                  </div>
-
-                  <div className="pt-1.5 border-t border-slate-800/80">
-                    <button
-                      onClick={() => {
-                        logout();
-                        setShowDropdown(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-400 hover:bg-rose-950/30 transition"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
-                    </button>
-                  </div>
+            {menuOpen && (
+              // Opaque on purpose: a translucent panel nested inside the
+              // header's backdrop-blur cannot re-blur its own backdrop, so
+              // the page text reads straight through it.
+              <div
+                role="menu"
+                className="animate-rise-in absolute right-0 z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-line-strong bg-overlay shadow-xl shadow-black/40"
+              >
+                <div className="border-b border-line px-3 py-2.5">
+                  <p className="truncate text-[13px] font-medium text-fg">
+                    {user.displayName}
+                  </p>
+                  <p className="truncate text-[12px] text-fg-muted">{user.email}</p>
                 </div>
-              </>
+
+                <div className="p-1">
+                  <MenuItem
+                    icon={<LayoutGrid className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      navigateTo('dashboard');
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Overview
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Check className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      navigateTo('credentials');
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Credentials
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Settings className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      toggleSettingsModal(true);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Settings
+                  </MenuItem>
+                </div>
+
+                <div className="border-t border-line p-1">
+                  <MenuItem
+                    icon={<LogOut className="h-3.5 w-3.5" />}
+                    tone="danger"
+                    onClick={() => {
+                      logout();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Sign out
+                  </MenuItem>
+                </div>
+              </div>
             )}
           </div>
-
         </div>
       </div>
-    </nav>
+
+      {/* Tabs collapse below the brand on small screens */}
+      <nav className="flex items-center gap-0.5 overflow-x-auto border-t border-line px-4 py-1.5 sm:hidden">
+        {TABS.map(({ label, tab, matches }) => {
+          const active = matches.includes(activeTab);
+          return (
+            <button
+              key={label}
+              onClick={() => navigateTo(tab)}
+              className={cn(
+                'shrink-0 rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors',
+                active ? 'bg-raised text-fg' : 'text-fg-muted'
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+    </header>
+  );
+}
+
+function MenuItem({
+  icon,
+  children,
+  onClick,
+  tone = 'default',
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClick: () => void;
+  tone?: 'default' | 'danger';
+}) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-left text-[13px] transition-colors',
+        tone === 'danger'
+          ? 'text-bad hover:bg-bad/10'
+          : 'text-fg-muted hover:bg-raised hover:text-fg'
+      )}
+    >
+      <span className="text-fg-subtle">{icon}</span>
+      {children}
+    </button>
   );
 }
