@@ -1,0 +1,14 @@
+# Build output
+dist/
+
+# Vite dependency cache
+node_modules/.vite/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+*.log

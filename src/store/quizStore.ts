@@ -94,10 +94,19 @@ const INITIAL_HISTORY = (): QuizSession[] => {
   ];
 };
 
+export type TabType =
+  | 'auth'
+  | 'dashboard'
+  | 'setup'
+  | 'quiz'
+  | 'results'
+  | 'flashcards'
+  | 'credentials';
+
 interface AppState {
   // Navigation Route
-  activeTab: 'auth' | 'dashboard' | 'setup' | 'quiz' | 'results' | 'flashcards';
-  navigateTo: (tab: 'auth' | 'dashboard' | 'setup' | 'quiz' | 'results' | 'flashcards') => void;
+  activeTab: TabType;
+  navigateTo: (tab: TabType) => void;
 
   // Auth State
   user: UserProfile | null;
@@ -164,7 +173,10 @@ export const useQuizStore = create<AppState>((set, get) => {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { return DEFAULT_USER; }
     }
-    return DEFAULT_USER; // defaults immediately
+    // No stored session: show the sign-in screen. (Returning DEFAULT_USER here
+    // would auto-authenticate every first-time visitor and make AuthPage
+    // unreachable except via an explicit sign-out.)
+    return null;
   };
 
   const loadSavedHistory = (): QuizSession[] => {
@@ -222,6 +234,10 @@ export const useQuizStore = create<AppState>((set, get) => {
     activeTab: initialUser ? 'dashboard' : 'auth',
     navigateTo: (tab) => {
       set({ activeTab: tab });
+      // Scroll restoration is handled centrally in App.tsx so that it also
+      // covers the paths that set `activeTab` directly (quiz generation and
+      // quiz submission), not just explicit navigation.
+
       // Sync chatbot context depending on tab
       const { currentSession, currentQuestionIndex } = get();
       if (tab === 'dashboard') {
@@ -369,8 +385,14 @@ export const useQuizStore = create<AppState>((set, get) => {
         const userAnswer = userAnswers[q.id] || '';
         
         let isCorrect = false;
-        if (q.type === 'short-answer') {
-          const cleanUser = userAnswer.toLowerCase().trim();
+        const cleanUser = userAnswer.toLowerCase().trim();
+
+        if (!cleanUser) {
+          // Unanswered or timed out. Guarded explicitly because the substring
+          // match below treats an empty string as contained in every answer,
+          // which would otherwise score blanks as correct.
+          isCorrect = false;
+        } else if (q.type === 'short-answer') {
           const cleanCorrect = q.correctAnswer.toLowerCase().trim();
           isCorrect = cleanUser.includes(cleanCorrect) || cleanCorrect.includes(cleanUser);
         } else {

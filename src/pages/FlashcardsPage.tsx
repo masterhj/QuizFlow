@@ -1,314 +1,261 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuizStore } from '../store/quizStore';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Check, 
-  HelpCircle, 
-  RotateCcw, 
-  Shuffle, 
-  GraduationCap,
-  Info
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  RotateCcw,
+  Shuffle,
+  Layers,
+  Undo2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Button,
+  Card,
+  CountUp,
+  EmptyState,
+  Label,
+  Page,
+  PageHeader,
+  Progress,
+  subjectAccent,
+} from '../components/ui';
+import { cn } from '../utils/cn';
 
 export default function FlashcardsPage() {
-  const { 
-    currentSession, 
-    studyFlashcards, 
-    toggleFlashcardMastery, 
-    shuffleFlashcards, 
-    resetFlashcardMastery, 
-    navigateTo 
+  const {
+    currentSession,
+    studyFlashcards,
+    toggleFlashcardMastery,
+    shuffleFlashcards,
+    resetFlashcardMastery,
+    navigateTo,
   } = useQuizStore();
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
 
-  // Celebrate when all cards are mastered
-  const totalCards = studyFlashcards.length;
-  const masteredCount = studyFlashcards.filter(c => c.mastered).length;
-  const isAllMastered = totalCards > 0 && masteredCount === totalCards;
+  const total = studyFlashcards.length;
+  const mastered = studyFlashcards.filter((c) => c.mastered).length;
+  const allMastered = total > 0 && mastered === total;
 
   useEffect(() => {
-    if (isAllMastered) {
-      // Side-to-side confetti cannon burst
-      const end = Date.now() + (1.5 * 1000);
-      const colors = ['#60a5fa', '#34d399', '#a78bfa'];
+    if (!allMastered) return;
+    confetti({
+      particleCount: 70,
+      spread: 75,
+      origin: { y: 0.3 },
+      colors: ['#6366f1', '#3fb950', '#22d3ee'],
+      disableForReducedMotion: true,
+    });
+  }, [allMastered]);
 
-      (function frame() {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: colors
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: colors
-        });
+  // Keep the index in range if the deck is shuffled or shortened.
+  useEffect(() => {
+    if (index > total - 1) setIndex(0);
+  }, [total, index]);
 
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      }());
-    }
-  }, [isAllMastered]);
-
-  if (totalCards === 0) {
+  if (total === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0F1E] text-white p-6 text-center space-y-4">
-        <GraduationCap className="h-12 w-12 text-blue-400" />
-        <h3 className="text-lg font-bold">No Flashcards Loaded</h3>
-        <p className="text-xs text-slate-400 max-w-xs">First generate a quiz to load custom vocabulary study cards.</p>
-        <button
-          onClick={() => navigateTo('dashboard')}
-          className="rounded-xl bg-blue-500 px-5 py-2.5 text-xs font-bold text-white transition"
-        >
-          Go to Dashboard
-        </button>
-      </div>
+      <Page width="narrow">
+        <EmptyState
+          className="mt-16"
+          icon={<Layers className="h-6 w-6" />}
+          title="No flashcards loaded"
+          description="Generate a quiz and its flashcard deck will appear here."
+          action={
+            <Button variant="primary" onClick={() => navigateTo('dashboard')}>
+              Back to overview
+            </Button>
+          }
+        />
+      </Page>
     );
   }
 
-  const activeCard = studyFlashcards[activeIndex];
+  const card = studyFlashcards[index];
+  const accent = subjectAccent(currentSession?.subject || 'Custom deck');
 
-  const handleNext = () => {
-    setIsFlipped(false);
-    setTimeout(() => {
-      setActiveIndex((prev) => (prev + 1) % totalCards);
-    }, 100);
+  const go = (delta: number) => {
+    setFlipped(false);
+    setIndex((prev) => (prev + delta + total) % total);
   };
 
-  const handlePrev = () => {
-    setIsFlipped(false);
-    setTimeout(() => {
-      setActiveIndex((prev) => (prev - 1 + totalCards) % totalCards);
-    }, 100);
+  const markMastered = () => {
+    if (!card.mastered) toggleFlashcardMastery(card.id);
+    if (index < total - 1) window.setTimeout(() => go(1), 180);
   };
 
-  const handleMastered = () => {
-    toggleFlashcardMastery(activeCard.id);
-    
-    // Automatically advance to next card on mark-as-mastered after a small latency, for great UX
-    setTimeout(() => {
-      if (activeIndex < totalCards - 1) {
-        handleNext();
-      }
-    }, 300);
+  const markLearning = () => {
+    if (card.mastered) toggleFlashcardMastery(card.id);
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] text-[#F0F4FF] p-4 sm:p-6 md:p-8 max-w-3xl mx-auto space-y-6 pb-28 animate-in fade-in duration-300">
-      
-      {/* 3D Perspective CSS injected directly */}
-      <style>{`
-        .perspective-1000 {
-          perspective: 1000px;
+    <Page width="narrow">
+      <PageHeader
+        title="Flashcards"
+        description={currentSession?.subject || 'Custom deck'}
+        action={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={shuffleFlashcards}>
+              <Shuffle className="h-3.5 w-3.5" />
+              Shuffle
+            </Button>
+            <Button variant="ghost" onClick={resetFlashcardMastery}>
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          </div>
         }
-        .preserve-3d {
-          transform-style: preserve-3d;
-        }
-        .backface-hidden {
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-      `}</style>
+      />
 
-      {/* Flashcards Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/80 pb-4">
-        <div>
-          <span className="text-xs text-blue-400 font-mono uppercase tracking-widest font-bold">
-            Subject: {currentSession?.subject || 'Custom Deck'}
+      {/* Progress */}
+      <div className="mb-6 space-y-2">
+        <div className="flex items-baseline justify-between">
+          <Label>Mastered</Label>
+          <span data-numeric className="text-[13px] text-fg-muted">
+            <CountUp value={mastered} className="text-emerald-300" /> of {total}
           </span>
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            Vocabulary Flashcards
-          </h2>
         </div>
-
-        <div className="flex items-center gap-2 font-mono text-xs text-slate-400 bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1">
-          Mastery progress: <strong className="text-emerald-400 font-bold pl-1">{masteredCount}</strong>/{totalCards} cards
-        </div>
+        <Progress value={(mastered / total) * 100} tone="ok" />
       </div>
 
-      {/* Progress bar */}
-      <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-850">
-        <div 
-          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-          style={{ width: `${(masteredCount / totalCards) * 100}%` }}
-        />
-      </div>
-
-      {/* Main 3D interactive Card */}
-      <div className="flex flex-col items-center justify-center gap-6">
-        
-        {/* Perspective container */}
-        <div 
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="w-full h-72 cursor-pointer perspective-1000 group relative select-none"
+      {/* Card */}
+      <div className="perspective mb-4">
+        <button
+          onClick={() => setFlipped((f) => !f)}
+          aria-label={flipped ? 'Show term' : 'Show definition'}
+          className="preserve-3d relative block h-72 w-full text-left transition-transform duration-500"
+          style={{ transform: flipped ? 'rotateY(180deg)' : undefined }}
         >
-          {/* Rotatable card box */}
-          <div className={`w-full h-full rounded-3xl border preserve-3d transition-transform duration-500 shadow-2xl flex items-center justify-center relative ${
-            isFlipped ? 'rotate-y-180 border-blue-500/40 bg-[#0F172A]' : 'border-slate-800 bg-[#111827]/75 hover:border-slate-700'
-          }`}>
-            
-            {/* Mastered badge in card */}
-            {activeCard.mastered && (
-              <div className="absolute top-4 right-4 z-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 p-1 text-emerald-400 font-mono text-[10px] font-bold flex items-center gap-1">
-                <Check className="h-3.5 w-3.5" /> MASTERED
-              </div>
+          {/* Front */}
+          <span
+            className={cn(
+              'backface-hidden absolute inset-0 flex flex-col justify-between overflow-hidden rounded-lg border bg-surface p-6 transition-colors',
+              card.mastered ? 'border-emerald-500/30' : 'border-line hover:border-line-strong'
             )}
-
-            {/* CARD FRONT FACE */}
-            <div className="absolute inset-0 backface-hidden p-6 flex flex-col justify-between text-center rounded-3xl">
-              <span className="text-[9px] text-slate-500 font-mono uppercase tracking-widest pt-2">Card {activeIndex + 1} of {totalCards}</span>
-              
-              <div className="my-auto space-y-3">
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white px-4">
-                  {activeCard.term}
-                </h3>
-              </div>
-
-              <div className="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1.5 pb-2">
-                <HelpCircle className="h-3.5 w-3.5 text-blue-400 animate-pulse" /> Tap to reveal definition
-              </div>
-            </div>
-
-            {/* CARD BACK FACE (Rotated 180 degrees initially) */}
-            <div className="absolute inset-0 backface-hidden rotate-y-180 p-6 flex flex-col justify-between text-center rounded-3xl">
-              <span className="text-[9px] text-blue-400 font-mono uppercase tracking-widest pt-2">DEFINITION & GLOSSARY</span>
-              
-              <div className="my-auto px-4">
-                <p className="text-sm sm:text-base text-slate-200 font-medium leading-relaxed">
-                  {activeCard.definition}
-                </p>
-              </div>
-
-              <div className="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1.5 pb-2">
-                <Info className="h-3.5 w-3.5 text-slate-400" /> Click to flip card back
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Deck Controls (Previous, Mastery toggling, Next) */}
-        <div className="w-full flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-6">
-          {/* Previous button */}
-          <button
-            onClick={handlePrev}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#111827]/50 hover:bg-slate-850 py-2.5 px-4 text-xs font-bold text-slate-300 transition"
           >
-            <ArrowLeft className="h-4 w-4" /> Prev Card
-          </button>
+            <span
+              className={cn(
+                'absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl',
+                accent.glow
+              )}
+            />
+            <span className="relative flex items-center justify-between">
+              <Label className={accent.text}>
+                Card {index + 1} of {total}
+              </Label>
+              {card.mastered && (
+                <span className="flex items-center gap-1 text-[12px] text-ok">
+                  <Check className="h-3.5 w-3.5" />
+                  Mastered
+                </span>
+              )}
+            </span>
+            <span className="relative text-center text-xl font-medium tracking-[-0.02em] text-fg">
+              {card.term}
+            </span>
+            <span className="relative text-center text-[12px] text-fg-subtle">
+              Click to reveal the definition
+            </span>
+          </span>
 
-          {/* Mastery decisions */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-            <button
-              onClick={() => handleMastered()}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition border ${
-                !activeCard.mastered 
-                  ? 'border-slate-800 bg-slate-900 text-slate-400 pointer-events-none' 
-                  : 'border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/10'
-              }`}
-              disabled={!activeCard.mastered}
-            >
-              Still Learning 🔄
-            </button>
-            
-            <button
-              onClick={() => handleMastered()}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition border ${
-                activeCard.mastered 
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15' 
-                  : 'border-emerald-500 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 shadow-md shadow-emerald-500/10'
-              }`}
-            >
-              {activeCard.mastered ? 'Mastered!' : 'Got It ✅'}
-            </button>
-          </div>
-
-          {/* Next button */}
-          <button
-            onClick={handleNext}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#111827]/50 hover:bg-slate-850 py-2.5 px-4 text-xs font-bold text-slate-300 transition"
+          {/* Back */}
+          <span
+            className={cn(
+              'backface-hidden flip-y absolute inset-0 flex flex-col justify-between overflow-hidden rounded-lg border bg-surface p-6',
+              accent.line
+            )}
           >
-            Next Card <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Utility bar: Shuffle and reset */}
-        <div className="w-full flex justify-between items-center gap-4 font-mono text-xs text-slate-400 pt-2">
-          <button
-            onClick={shuffleFlashcards}
-            className="flex items-center gap-1.5 hover:text-white transition"
-          >
-            <Shuffle className="h-3.5 w-3.5 text-blue-400" /> Shuffle Deck
-          </button>
-
-          <button
-            onClick={resetFlashcardMastery}
-            className="flex items-center gap-1.5 hover:text-white transition"
-          >
-            <RotateCcw className="h-3.5 w-3.5 text-rose-400" /> Reset Mastery Progress
-          </button>
-        </div>
-
-        {/* Deck Grid List */}
-        <div className="w-full space-y-3 pt-4 text-left">
-          <span className="block text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider">Deck Glossary Index</span>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {studyFlashcards.map((card, idx) => (
-              <button
-                key={card.id}
-                onClick={() => {
-                  setIsFlipped(false);
-                  setActiveIndex(idx);
-                }}
-                className={`rounded-xl border p-3 text-left text-xs font-semibold transition duration-200 flex items-center justify-between gap-2 ${
-                  activeIndex === idx 
-                    ? 'border-blue-500 bg-blue-500/10 text-blue-200 ring-1 ring-blue-500/10' 
-                    : card.mastered 
-                      ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400/90'
-                      : 'border-slate-850 bg-[#111827]/40 text-slate-400 hover:border-slate-700 hover:bg-slate-800/50'
-                }`}
-              >
-                <span className="truncate pr-1">{card.term}</span>
-                {card.mastered && (
-                  <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Celebration Dialog */}
-        {isAllMastered && (
-          <div className="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-2 text-center animate-in zoom-in-95 duration-300">
-            <span className="text-xl">🏆</span>
-            <h4 className="font-extrabold text-white text-sm">Vocab Deck Mastered!</h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              Phenomenal study session! You have successfully flipped through and mastered every single term in this subject deck.
-            </p>
-            <button
-              onClick={() => navigateTo('dashboard')}
-              className="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 py-1.5 px-3.5 text-xs font-bold text-white shadow transition"
-            >
-              Return to Dashboard
-            </button>
-          </div>
-        )}
-
+            <span
+              className={cn(
+                'absolute -bottom-10 -left-10 h-28 w-28 rounded-full blur-3xl',
+                accent.glow
+              )}
+            />
+            <Label className={cn('relative', accent.text)}>Definition</Label>
+            <span className="relative text-center text-[15px] leading-relaxed text-fg">
+              {card.definition}
+            </span>
+            <span className="relative text-center text-[12px] text-fg-subtle">
+              Click to flip back
+            </span>
+          </span>
+        </button>
       </div>
 
-    </div>
+      {/* Controls */}
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <Button variant="secondary" onClick={() => go(-1)}>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Previous
+        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={markLearning} disabled={!card.mastered}>
+            <Undo2 className="h-3.5 w-3.5" />
+            Still learning
+          </Button>
+          <Button
+            variant={card.mastered ? 'secondary' : 'primary'}
+            onClick={markMastered}
+            disabled={card.mastered}
+          >
+            <Check className="h-3.5 w-3.5" />
+            {card.mastered ? 'Mastered' : 'Got it'}
+          </Button>
+        </div>
+
+        <Button variant="secondary" onClick={() => go(1)}>
+          Next
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {allMastered && (
+        <Card className="animate-rise-in mb-6">
+          <div className="flex items-center justify-between gap-4 p-4">
+            <div>
+              <p className="text-[13px] font-medium text-fg">Deck complete</p>
+              <p className="text-[12px] text-fg-muted">
+                You marked every term in this deck as mastered.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => navigateTo('dashboard')}>
+              Back to overview
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Deck index */}
+      <section className="space-y-2">
+        <Label>All terms</Label>
+        <div className="stagger grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {studyFlashcards.map((item, i) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setFlipped(false);
+                setIndex(i);
+              }}
+              style={{ ['--i' as string]: i }}
+              className={cn(
+                'flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left text-[13px] transition-all duration-150 hover:-translate-y-px',
+                i === index
+                  ? 'border-accent bg-accent/10 text-accent-fg'
+                  : item.mastered
+                    ? 'border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-200/80'
+                    : 'border-line bg-surface text-fg-muted hover:border-line-strong hover:text-fg'
+              )}
+            >
+              <span className="truncate">{item.term}</span>
+              {item.mastered && <Check className="h-3.5 w-3.5 shrink-0 text-ok" />}
+            </button>
+          ))}
+        </div>
+      </section>
+    </Page>
   );
 }
